@@ -29,7 +29,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Tab One',
+          title: 'signin',
           tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
           headerRight: () => (
             <Link href="/modal" asChild>
@@ -48,9 +48,25 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
-        name="two"
+        name="signup"
         options={{
-          title: 'Tab Two',
+          title: 'signup',
+          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+        }}
+      />
+
+      <Tabs.Screen
+        name="camera"
+        options={{
+          title: 'camera',
+          tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
+        }}
+      />
+
+    <Tabs.Screen
+        name="games"
+        options={{
+          title: 'games',
           tabBarIcon: ({ color }) => <TabBarIcon name="code" color={color} />,
         }}
       />
