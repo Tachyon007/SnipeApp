@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import React, { useEffect, useState } from 'react';
 import { View, Text, FlatList, StyleSheet, TouchableOpacity, Modal, TextInput } from 'react-native';
 
@@ -18,7 +19,6 @@ const games = () => {
     
     const [userId, setUserId] = useState(5);
     const [userName, setUserName] = useState("Tachyon");
-
 
     const [modalVisible, setModalVisible] = useState(false);
     const [newGameName, setNewGameName] = useState("");
@@ -44,6 +44,17 @@ const games = () => {
         </View>
       );
 
+    const getData = async (key: string) => {
+        try {
+          const value = await AsyncStorage.getItem(key);
+          if (value !== null) {
+            console.log('Retrieved data:', value);
+            return value;
+          }
+        } catch (e) {
+          console.error('Failed to fetch data', e);
+        }
+    };
 
     //fetched user's games
     const getGameData = async () => {
@@ -160,7 +171,21 @@ const games = () => {
 
     //fetch data once
     useEffect(() => {
-        getGameData();
+        async function fetchData() {
+            let rawSignInData = await getData('signInData');
+            if(rawSignInData == undefined){
+              console.log("UNDEF ERROR: useEffect games list fetch");
+            }
+            let jsonData = JSON.parse(rawSignInData + "");
+
+            console.log(parseInt(jsonData.user_id), jsonData.username);
+            setUserId(parseInt(jsonData.user_id));
+            setUserName(jsonData.username);
+            //get game list
+            getGameData();
+        }
+
+        fetchData();
     }, []);
 
   return (
@@ -184,6 +209,11 @@ const games = () => {
         data={games}
         keyExtractor={(item) => item.game_id.toString()}
         renderItem={renderItem}
+        ListEmptyComponent={
+          <View style={{ padding: 20, alignItems: 'center' }}>
+              <Text>No games found.</Text>
+          </View>
+      }
       />
 
 

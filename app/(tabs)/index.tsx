@@ -42,11 +42,15 @@ const LoginScreen = () => {
         setSignInResponse('Good: ' + data);
 
         //Store data and redirect
-        let justToken = data.substring(3, data.length-1);
+        let commaIndex = data.indexOf(',');
+        let justToken = data.substring(commaIndex+1, data.length-1);
+        let userId = data.substring(1, commaIndex);
+        console.log(userId + " | " + justToken + " | " + commaIndex);
 
         let signInData = {
           "username": email,
           "password": password,
+          "user_id": userId,
           "token": justToken,
           "lastSignIn": new Date().toUTCString(),
         }
