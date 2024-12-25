@@ -16,7 +16,6 @@ const games = () => {
 
     const [games, setGames] = useState<Game[]>([]);
 
-    
     const [userId, setUserId] = useState(5);
     const [userName, setUserName] = useState("Tachyon");
 
@@ -25,7 +24,6 @@ const games = () => {
 
     const [joinGameModalVis, setJoinGameModalVis] = useState(false);
     const [joinGameCode, setJoinGameCode] = useState("");
-
 
     const renderItem = ({ item }: { item: Game }) => (
         <View style={styles.card}>
@@ -42,7 +40,7 @@ const games = () => {
           </TouchableOpacity>
           
         </View>
-      );
+    );
 
     const getData = async (key: string) => {
         try {
@@ -152,6 +150,7 @@ const games = () => {
             method: 'Get'
         });
         const data = await response.text();
+        console.log('https://snipeapi.azurewebsites.net/api/joinGame?userId='+userId+'&gameCode='+joinCode);
 
         if (data.length > 0 && data.charAt(0) === '1') {
             console.log("join game --> " + data);
