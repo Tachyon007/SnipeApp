@@ -59,6 +59,8 @@ export default function TabTwoScreen() {
   }
 
   const uploadByteArr = async (byteArr: any) => {
+    console.log("Uploading Image:\nLength: " + byteArr.length);
+
     await fetch( 
       'https://snipeapi.azurewebsites.net/api/ImageUpload_V3', 
       {
@@ -71,6 +73,7 @@ export default function TabTwoScreen() {
       .then(response => { 
         response.text() 
         .then(data => { 
+          console.log("IMAGE UPLOAD RESPONSE:\n");
           console.log(data);
         });
       })
@@ -94,9 +97,10 @@ export default function TabTwoScreen() {
               encoding: FileSystem.EncodingType.Base64
             });
 
-            // If you still need binary data (as a Uint8Array), you can convert it from base64
-            const binaryImageData = atob(base64Data).split('').map(char => char.charCodeAt(0));
-            const byteArr = new Uint8Array(binaryImageData);
+            //const binaryImageData = atob(base64Data).split('').map(char => char.charCodeAt(0));
+            //const byteArr = new Uint8Array(binaryImageData);
+
+            const byteArr = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
             console.log("\n\n ----- New system test -----");
             console.log("byte len: \t" + byteArr.length);
