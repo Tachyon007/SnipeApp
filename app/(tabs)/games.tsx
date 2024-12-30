@@ -13,17 +13,30 @@ const games = () => {
         game_status: number;
         player_count: number;
     }
+    interface GameMember {
+      user_id: number;
+      issued_at: string;
+      username: string;
+      admin_user_id: number;
+      game_status: number;
+      player_count: number;
+  }
 
     const [games, setGames] = useState<Game[]>([]);
 
     const [userId, setUserId] = useState(5);
     const [userName, setUserName] = useState("Tachyon");
 
+    const [gameDetailsModalVis, setGameDetailsModalVis] = useState(false);
+    const [gameDetails, setGameDetails] = useState([]);
+
+
     const [modalVisible, setModalVisible] = useState(false);
     const [newGameName, setNewGameName] = useState("");
 
     const [joinGameModalVis, setJoinGameModalVis] = useState(false);
     const [joinGameCode, setJoinGameCode] = useState("");
+    
 
     const renderItem = ({ item }: { item: Game }) => (
         <View style={styles.card}>
@@ -35,12 +48,22 @@ const games = () => {
           <Text>Player Count: {item.player_count}</Text>
 
 
-          <TouchableOpacity style={styles.modalButton} onPress={()=>{leaveGame(item.game_id)}}>
+          <TouchableOpacity style={styles.modalButton} onPress={()=>{getGameDetails(item.game_id)}}>
+            <Text style={styles.buttonText}>Details</Text>
+          </TouchableOpacity>
+
+
+          <TouchableOpacity style={styles.modalButtonRed} onPress={()=>{leaveGame(item.game_id)}}>
             <Text style={styles.modalButtonText}>leave game</Text>
           </TouchableOpacity>
           
         </View>
     );
+    const renderGameMember = ({ item }: { item: GameMember }) => (
+      <View style={styles.card}>
+        <Text style={styles.title}>Player: {item.username}</Text>
+      </View>
+  );
 
     const getData = async (key: string) => {
         try {
@@ -166,6 +189,30 @@ const games = () => {
         }
     };
 
+    const getGameDetails = async (game_id: number) => {
+
+      //fetch data
+      try {
+      const response = await fetch('https://snipeapi.azurewebsites.net/api/getGameDetails?id=' + game_id, {
+          method: 'Get'
+      });
+      const data = await response.text();
+
+      if (data.length > 0 && data.charAt(0) === '[') {
+          console.log("game details : " + game_id +" --> \n" + data);
+          
+          setGameDetails(JSON.parse(data));
+          setGameDetailsModalVis(true);
+      } else {
+          //Error getting data
+          console.log("game details --> " + data);
+      }
+      } catch (error) {
+          console.log("getting game details");
+      }
+
+  };
+
 
 
     //fetch data once
@@ -215,6 +262,39 @@ const games = () => {
       }
       />
 
+
+<Modal
+        visible={gameDetailsModalVis}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setGameDetailsModalVis(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <Text style={styles.modalTitle}>Game Details</Text>
+
+            <FlatList
+              data={gameDetails}
+              keyExtractor={(item) => (""+item.user_id)}
+              renderItem={renderGameMember}
+              ListEmptyComponent={
+                <View style={{ padding: 20, alignItems: 'center' }}>
+                    <Text>No player data found.</Text>
+                </View>
+            }
+            />
+          
+            <View style={styles.modalButtons}>
+              <TouchableOpacity style={styles.modalButton} onPress={()=>{}}>
+                <Text style={styles.modalButtonText}>Set Default</Text>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.modalButton} onPress={() => setGameDetailsModalVis(false)}>
+                <Text style={styles.modalButtonText}>Close</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
 
     <Modal
@@ -356,6 +436,14 @@ const styles = StyleSheet.create({
     padding: 10,
     margin: 5,
     backgroundColor: '#6200ea',
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+  modalButtonRed: {
+    flex: 1,
+    padding: 10,
+    margin: 5,
+    backgroundColor: '#db3514',
     borderRadius: 5,
     alignItems: 'center',
   },
