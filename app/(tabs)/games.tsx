@@ -61,7 +61,10 @@ const games = () => {
     );
     const renderGameMember = ({ item }: { item: GameMember }) => (
       <View style={styles.card}>
-        <Text style={styles.title}>Player: {item.username}</Text>
+        <Text style={styles.title}>
+          Player: {item.username}
+          {item.user_id === item.admin_user_id && <Text style={styles.star}> ⭐</Text>}
+        </Text>
       </View>
   );
 
@@ -450,6 +453,10 @@ const styles = StyleSheet.create({
   modalButtonText: {
     color: '#fff',
     fontWeight: 'bold',
+  },
+  star: {
+    color: "gold",
+    fontSize: 16,
   },
 });
 

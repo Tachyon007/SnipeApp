@@ -1,5 +1,5 @@
 
-import { StyleSheet, TouchableOpacity, Text, View, Button, Pressable } from 'react-native';
+import { StyleSheet, TouchableOpacity, Text, View, Button, Pressable, Modal, FlatList } from 'react-native';
 import React, { useRef, useState, useEffect } from 'react';
 //import EditScreenInfo from '@/components/EditScreenInfo';
 //import Camera from '../../components/Camera';
@@ -7,56 +7,65 @@ import { CameraView, useCameraPermissions, PermissionStatus, PermissionResponse 
 //import { TabActions, TabRouter } from '@react-navigation/native';
 import { Link } from 'expo-router';
 import * as FileSystem from 'expo-file-system';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import ConfirmPictureModal from '../../components/pictureModal';
 
+
+//__bring_game_info --> feed
 
 export default function TabTwoScreen() {
 
-  const [hasPermission, setHasPermission] = useState(false);
-  const cameraRef = useRef<CameraView | null>(null); // create a reference to the camera
+  interface GameMember {
+    user_id: number;
+    issued_at: string;
+    username: string;
+    admin_user_id: number;
+    game_status: number;
+    player_count: number;
+  }
 
+  //picture stuff
+  const [picModalVisible, setPicModalVisible] = useState(false);
+  const [picUri, setPicUri] = useState("");
 
-  const handleBase64Img = async (imgString: String) => {
-    if(imgString.length < 50){//More sanity checks?
-      console.log("b64 too short?");
+  //Game Select
+  const [userId, setUserId] = useState(0);
+  const [gameIds, setGameIds] = useState<number[] | undefined>([]);
+  
+  const [gameDetailsModalVis, setGameDetailsModalVis] = useState(false);
+  const [gameDetails, setGameDetails] = useState([]); 
+
+  const [currentGameTarget, setCurrentGameTarget] = useState<string | undefined>();
+
+  //game id
+  const [selectedId, setSelectedId] = useState<number | undefined>(undefined);
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  
+
+  //select current game and refresh game players
+  const handleSelect = async (id: number) => {
+
+    if(id == selectedId){
+      setIsModalVisible(false);
       return;
     }
 
-    console.log("Img String Length: " + imgString.length);
-    console.log(imgString.substring(0, 100)); // Print the first 100 characters
-    
-    try { 
+    //update current game details
 
-      console.log("[Total b64 chars]: " + imgString.length);
+    let gameDetailsArr = await getGameDetails(id);
+    console.log("\n\nFETCHING NEW GAME DETAILS:\n" + gameDetailsArr);
+  
+    setCurrentGameTarget(gameDetailsArr[0].username);
+    setGameDetails(gameDetailsArr);
 
-      //Send data to our endpoint
-      await fetch( 
-          'https://snipeapi.azurewebsites.net/api/ImageUpload_V2', 
-          {
-            method: 'POST',
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-            },
 
-            //Set content of message
-            body: JSON.stringify({
-              base64: imgString,
-            })
-          })
-          //Proccess the response, check if it worked
-          .then(response => { 
-            response.text() 
-            .then(data => { 
-              //Check for success
-              console.log(data);
-            });
-          })
-  } 
-  catch (error) { 
-    //setSignUpResponse('There was an error');
-    console.log(error);
-  } 
-  }
+    setSelectedId(id);
+    setIsModalVisible(false);
+  };
+
+
+  const [hasPermission, setHasPermission] = useState(false);
+  const cameraRef = useRef<CameraView | null>(null); // create a reference to the camera
 
   const uploadByteArr = async (byteArr: any) => {
     console.log("Uploading Image:\nLength: " + byteArr.length);
@@ -105,8 +114,10 @@ export default function TabTwoScreen() {
             console.log("\n\n ----- New system test -----");
             console.log("byte len: \t" + byteArr.length);
             console.log("first 20: \t" + byteArr.toString().substring(0, 20));
-            uploadByteArr(byteArr);
-
+            
+            //uploadByteArr(byteArr);
+            setPicUri(photoURI);
+            setPicModalVisible(true);
           } catch (error) {
             console.error('Error uploading image:', error);
           }
@@ -133,6 +144,125 @@ const denyPermission = () => {
     })();
   }, []);
 
+
+
+//fetch data once
+const renderGameMember = ({ item }: { item: GameMember }) => (
+      <View style={styles.card}>
+         <TouchableOpacity style={styles.modalButton} 
+         onPress={()=>{
+            setCurrentGameTarget(item.username);
+            setGameDetailsModalVis(false);
+          }}>
+            <Text style={styles.buttonText}>{item.username}</Text>
+          </TouchableOpacity>
+      </View>
+  );
+
+const getData = async (key: string) => {
+  try {
+    const value = await AsyncStorage.getItem(key);
+    if (value !== null) {
+      console.log('Retrieved data:', value);
+      return value;
+    }
+  } catch (e) {
+    console.error('Failed to fetch data', e);
+  }
+};
+
+const getGameData = async (user_id: number) => {
+  //check if parameters are valid
+
+  //fetch data
+  try {
+  const response = await fetch('https://snipeapi.azurewebsites.net/api/getGamesList?id='+user_id, {
+      method: 'Get'
+  });
+  const data = await response.text();
+
+  if (data.length > 0 && data.charAt(0) === '[') {
+
+      let gamesData = JSON.parse(data);
+      //console.log(gamesData);
+      let gameIds: number[] = [];
+      for(let i = 0; i < gamesData.length; i++){
+        gameIds.push(gamesData[i].game_id);
+      }
+
+      //sort
+      gameIds.sort();
+      
+      return gameIds;
+  
+  } else {
+      //Error getting data
+      console.log(data);
+  }
+  } catch (error) {
+  //Error getting data
+  }
+};
+
+const getGameDetails = async (game_id: number) => {
+
+  //fetch data
+  try {
+  const response = await fetch('https://snipeapi.azurewebsites.net/api/getGameDetails?id=' + game_id, {
+      method: 'Get'
+  });
+  const data = await response.text();
+
+  if (data.length > 0 && data.charAt(0) === '[') {
+      console.log("game details : " + game_id +" --> \n" + data);
+      
+      return JSON.parse(data);
+  } else {
+      //Error getting data
+      console.log("game details --> " + data);
+  }
+  } catch (error) {
+      console.log("getting game details");
+  }
+
+};
+    useEffect(() => {
+        async function fetchData() {
+            let rawSignInData = await getData('signInData');
+            if(rawSignInData == undefined){
+              console.log("UNDEF ERROR: camera useEffect games list fetch");
+              return;
+            }
+            let jsonData = JSON.parse(rawSignInData + "");
+            let currentUserId = parseInt(jsonData.user_id);
+
+            console.log("Camera: " + currentUserId, jsonData.username);
+
+            //fetch games
+            let idArr = await getGameData(currentUserId);
+            if(idArr == undefined || idArr.length == 0){
+              console.log("Error getting game data");
+              return;
+            }
+
+            //fetch game details
+
+            let gameDetailsArr = await getGameDetails(idArr[0]);
+            console.log(gameDetailsArr);
+          
+            setCurrentGameTarget(gameDetailsArr[0].username);
+            setGameDetails(gameDetailsArr);
+            setSelectedId(idArr[0]);
+            setUserId(currentUserId);
+            setGameIds(idArr);
+            
+           
+            
+        }
+
+        fetchData();
+    }, []);  
+
   if (!hasPermission) {
     // Camera permissions are not granted yet.
     return (
@@ -150,9 +280,24 @@ const denyPermission = () => {
 else {
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Snipe Camssss</Text>
-     
-    
+        <TouchableOpacity
+          style={styles.dropdownButton}
+          onPress={() => setIsModalVisible(true)}
+        >
+          <Text style={styles.buttonText}>
+            {selectedId ? `ID: ${selectedId}` : "Choose an ID"}
+          </Text>
+      </TouchableOpacity>
+
+      <TouchableOpacity
+          style={styles.dropdownButton}
+          onPress={() => setGameDetailsModalVis(true)}
+        >
+          <Text style={styles.buttonText}>
+            {currentGameTarget ? `Target: ${currentGameTarget}` : "Choose a target"}
+          </Text>
+      </TouchableOpacity>
+
         <CameraView ref={cameraRef} style={styles.cameraContainer}>
         <View>
       
@@ -161,6 +306,69 @@ else {
       </TouchableOpacity>
       </View>
       </CameraView>
+
+
+
+
+      <Modal
+        visible={isModalVisible}
+        transparent={true}
+        animationType="slide"
+        onRequestClose={() => setIsModalVisible(false)}
+      >
+        <View style={styles.modalContainer}>
+          <View style={styles.modalContent}>
+            <FlatList
+              data={gameIds}
+              keyExtractor={(item) => item.toString()}
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  style={styles.modalItem}
+                  onPress={() => handleSelect(item)}
+                >
+                  <Text style={styles.itemText}>ID: {item}</Text>
+                </TouchableOpacity>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+      <Modal
+              visible={gameDetailsModalVis}
+              transparent={true}
+              animationType="slide"
+              onRequestClose={() => setGameDetailsModalVis(false)}
+            >
+              <View style={styles.modalContainer}>
+                <View style={styles.modalContent}>
+                  <Text style={styles.modalTitle}>Select a Target:</Text>
+      
+                  <FlatList
+                    data={gameDetails}
+                    keyExtractor={(item) => (""+item.user_id)}
+                    renderItem={renderGameMember}
+                    ListEmptyComponent={
+                      <View style={{ padding: 20, alignItems: 'center' }}>
+                          <Text>No player data found.</Text>
+                      </View>
+                  }
+                  />
+              
+                </View>
+              </View>
+      </Modal>
+
+      <ConfirmPictureModal
+        picUri={picUri}
+        visible={picModalVisible}
+        onConfirm={()=>{setPicModalVisible(false)}}
+        onReject={()=>{setPicModalVisible(false)}}
+        onClose={() => setPicModalVisible(false)}
+      />
+
+
+
+
 
       <View style={styles.circlereticle}>
       <View style={styles.horizontalLine} />
@@ -176,6 +384,75 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center'
   },
+
+
+  card: {
+    backgroundColor: '#fff',
+    padding: 15,
+    marginVertical: 8,
+    borderRadius: 8,
+    shadowColor: '#000',
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  modalContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+  },
+  modalContent: {
+    width: '80%',
+    backgroundColor: '#fff',
+    padding: 20,
+    borderRadius: 10,
+    alignItems: 'center',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 10,
+  },
+  modalButton: {
+    flex: 1,
+    padding: 10,
+    margin: 5,
+    borderColor: 'black',
+    borderWidth: 1,
+    borderRadius: 5,
+    alignItems: 'center',
+  },
+
+  label: {
+    fontSize: 16,
+    marginBottom: 5,
+  },
+  dropdownButton: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 10,
+    borderRadius: 5,
+    backgroundColor: "#f9f9f9",
+  },
+  buttonText: {
+    fontSize: 16,
+  },
+  modalOverlay: {
+    flex: 1,
+    justifyContent: "center",
+    backgroundColor: "rgba(0,0,0,0.5)",
+  },
+  modalItem: {
+    padding: 10,
+    borderBottomWidth: 1,
+    borderBottomColor: "#ccc",
+  },
+  itemText: {
+    fontSize: 16,
+  },
+
+
   title: {
     fontSize: 20,
     fontWeight: 'bold'
@@ -192,7 +469,7 @@ const styles = StyleSheet.create({
   },
   cameraContainer: {
     width: '100%',
-    height: '100%',
+    height: '80%',
     aspectRatio: 1,
     borderRadius: 20,
     overflow: 'hidden',
