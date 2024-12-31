@@ -7,6 +7,8 @@ import {
   TouchableOpacity,
   Image,
 } from "react-native";
+import * as FileSystem from 'expo-file-system';
+
 
 const ConfirmPictureModal = ({
   picUri,
@@ -22,6 +24,36 @@ const ConfirmPictureModal = ({
   onClose: () => void;
 }) => {
 
+
+    const uploadByteArr = async (byteArr: any) => {
+        console.log("Uploading Image:\nLength: " + byteArr.length);
+    
+        await fetch( 
+          'https://snipeapi.azurewebsites.net/api/ImageUpload_V3', 
+          {
+            method: 'POST',
+            headers: {
+             "Content-Type": "application/octet-stream",
+            },
+            body: byteArr,
+          })
+          .then(response => { 
+            response.text() 
+            .then(data => { 
+              console.log("IMAGE UPLOAD RESPONSE:\n");
+              console.log(data);
+            });
+          })
+    }
+
+    const uploadPicture = async () => {
+         const base64Data = await FileSystem.readAsStringAsync(picUri, {
+            encoding: FileSystem.EncodingType.Base64
+        });
+        
+        const byteArr = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+        uploadByteArr(byteArr);
+    }
 
   return (
     <Modal
@@ -40,7 +72,7 @@ const ConfirmPictureModal = ({
             <TouchableOpacity style={styles.rejectButton} onPress={onReject}>
               <Text style={styles.buttonText}>✖</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.confirmButton} onPress={onConfirm}>
+            <TouchableOpacity style={styles.confirmButton} onPress={()=> {uploadPicture(); onConfirm();}}>
               <Text style={styles.buttonText}>✔</Text>
             </TouchableOpacity>
           </View>
